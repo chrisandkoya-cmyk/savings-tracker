@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>ระบบออมเงิน · Savings Tracker</title>
 <meta name="description" content="ระบบออมเงิน ต่อยอดจากโค้ดภาษา C คำนวณยอดรวม ค่าเฉลี่ย และค่าสูงสุด พร้อมติดตามเป้าหมาย">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10,26 +10,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f7f5;
+    --bg: #f3f6f4;
     --surface: #ffffff;
-    --surface-2: #eef3f0;
-    --border: #dfe7e2;
+    --surface-2: #eef2ef;
+    --border: #dde5e0;
     --text: #11201a;
-    --muted: #5b6d64;
+    --muted: #5d6e66;
     --accent: #0f766e;
     --accent-hover: #0d655e;
     --accent-soft: #d1fae5;
     --accent-text: #065f46;
     --gold: #b45309;
-    --gold-soft: #fef3c7;
     --danger: #b91c1c;
-    --shadow: 0 1px 2px rgba(16, 32, 26, .04), 0 8px 24px rgba(16, 32, 26, .06);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0c1512;
       --surface: #13211c;
-      --surface-2: #1a2c26;
+      --surface-2: #1b2d27;
       --border: #253b33;
       --text: #ecfdf5;
       --muted: #8da59b;
@@ -38,161 +36,171 @@
       --accent-soft: #133933;
       --accent-text: #5eead4;
       --gold: #fbbf24;
-      --gold-soft: #332711;
       --danger: #f87171;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
     }
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
+  * { box-sizing: border-box; min-width: 0; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
     font-family: "Prompt", system-ui, -apple-system, sans-serif;
-    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
-  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 40px; }
+  .app {
+    max-width: 440px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-  /* Top bar */
+  /* Header */
   header {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
   }
-  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 8px; }
   .logo {
-    width: 44px; height: 44px; border-radius: 13px;
-    background: var(--accent-soft); color: var(--accent-text);
-    display: grid; place-items: center; font-size: 22px; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--accent-soft); display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
   }
-  h1 { font-size: 1.25rem; font-weight: 700; margin: 0; letter-spacing: -.01em; }
-  .sub { font-size: .8rem; color: var(--muted); margin: 0; }
+  h1 { font-size: 1.05rem; font-weight: 700; margin: 0; line-height: 1.2; }
+  .sub { font-size: .7rem; color: var(--muted); margin: 0; }
   .ghost-btn {
     background: var(--surface); color: var(--muted); border: 1px solid var(--border);
-    padding: 8px 12px; border-radius: 10px; font: inherit; font-size: .8rem;
-    cursor: pointer; transition: .15s;
+    padding: 5px 10px; border-radius: 8px; font: inherit; font-size: .74rem; cursor: pointer;
+    flex-shrink: 0;
   }
   .ghost-btn:hover { color: var(--danger); border-color: var(--danger); }
 
-  /* Hero card */
+  /* Hero + 3 stats inside one compact block */
   .hero {
     background: linear-gradient(135deg, #0f766e 0%, #064e3b 100%);
-    color: #ecfdf5; border-radius: 20px; padding: 22px;
-    box-shadow: 0 12px 30px rgba(15, 118, 110, .22);
-    margin-bottom: 16px;
+    color: #ecfdf5; border-radius: 16px; padding: 14px;
+    box-shadow: 0 8px 20px rgba(15, 118, 110, .2);
   }
-  .hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-  .hero-label { font-size: .8rem; opacity: .82; }
-  .hero-total { font-size: 2.1rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
-  .hero-total small { font-size: 1rem; font-weight: 500; opacity: .85; }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .hero-label { font-size: .72rem; opacity: .82; }
+  .hero-total {
+    font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    line-height: 1.15; word-break: break-word;
+  }
+  .hero-total small { font-size: .85rem; font-weight: 500; opacity: .85; }
   .pill {
-    background: rgba(255,255,255,.15); padding: 5px 11px; border-radius: 999px;
-    font-size: .78rem; font-weight: 500; white-space: nowrap;
+    background: rgba(255,255,255,.16); padding: 3px 9px; border-radius: 999px;
+    font-size: .72rem; white-space: nowrap; flex-shrink: 0;
   }
-  .progress-wrap { margin-top: 16px; }
-  .progress-meta { display: flex; justify-content: space-between; font-size: .82rem; opacity: .92; margin-bottom: 6px; }
-  .bar { height: 10px; background: rgba(255,255,255,.18); border-radius: 999px; overflow: hidden; }
-  .bar > div { height: 100%; background: #34d399; border-radius: 999px; transition: width .35s ease; }
-  .hero-note { margin: 10px 0 0; font-size: .82rem; opacity: .92; }
 
-  /* Summary stats (Total / Average / Highest) */
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-  @media (max-width: 480px) { .stats { grid-template-columns: 1fr; } }
+  /* 3 summary stats row inside hero */
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-top: 10px;
+  }
   .stat {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 15px; padding: 14px 15px; box-shadow: var(--shadow);
+    background: rgba(0, 0, 0, .2);
+    border-radius: 10px; padding: 7px 8px; text-align: center;
   }
-  .stat-k { font-size: .76rem; color: var(--muted); }
-  .stat-v { font-size: 1.2rem; font-weight: 700; margin: 3px 0 2px; font-variant-numeric: tabular-nums; }
-  .stat-s { font-size: .74rem; color: var(--muted); }
-  .stat.hi .stat-v { color: var(--accent); }
-  .stat.avg .stat-v { color: var(--gold); }
+  .stat-k { font-size: .66rem; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-v { font-size: .88rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-s { font-size: .64rem; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Section cards (Menu 1 & 2) */
+  /* Progress inside hero */
+  .progress-wrap { margin-top: 10px; }
+  .progress-meta { display: flex; justify-content: space-between; font-size: .74rem; opacity: .92; margin-bottom: 4px; gap: 6px; }
+  .bar { height: 7px; background: rgba(255,255,255,.2); border-radius: 999px; overflow: hidden; }
+  .bar > div { height: 100%; background: #34d399; border-radius: 999px; transition: width .3s ease; }
+  .hero-note { margin: 6px 0 0; font-size: .73rem; opacity: .92; line-height: 1.35; }
+
+  /* Compact cards for Menu 1 & 2 */
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 18px; padding: 18px; box-shadow: var(--shadow);
-    margin-bottom: 14px;
+    border-radius: 14px; padding: 12px;
   }
-  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .step {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-weight: 600; font-size: .98rem; margin: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 600; font-size: .86rem; margin: 0;
   }
   .step-num {
-    width: 24px; height: 24px; border-radius: 8px;
+    width: 20px; height: 20px; border-radius: 6px;
     background: var(--accent-soft); color: var(--accent-text);
-    display: inline-grid; place-items: center; font-size: .8rem; font-weight: 700;
+    display: inline-grid; place-items: center; font-size: .72rem; font-weight: 700; flex-shrink: 0;
   }
 
-  /* Controls */
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .input-wrap { flex: 1; min-width: 170px; position: relative; }
+  /* Non-overflowing input row */
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .input-wrap { position: relative; width: 100%; }
   .inp {
     width: 100%; background: var(--surface-2); color: var(--text);
-    border: 1.5px solid var(--border); border-radius: 12px;
-    padding: 11px 48px 11px 13px; font: inherit; font-size: .95rem;
-    font-variant-numeric: tabular-nums; transition: .15s;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px 36px 8px 10px; font: inherit; font-size: .88rem;
+    font-variant-numeric: tabular-nums;
   }
   .inp:focus { outline: none; border-color: var(--accent); background: var(--surface); }
   .unit {
-    position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
-    font-size: .82rem; color: var(--muted); pointer-events: none;
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: .74rem; color: var(--muted); pointer-events: none;
   }
   .btn {
     background: var(--accent); color: #ffffff; border: 0;
-    border-radius: 12px; padding: 11px 18px; font: inherit;
-    font-size: .92rem; font-weight: 600; cursor: pointer;
-    transition: transform .08s, background .15s;
+    border-radius: 10px; padding: 8px 13px; font: inherit;
+    font-size: .84rem; font-weight: 600; cursor: pointer; white-space: nowrap;
   }
   .btn:hover { background: var(--accent-hover); }
-  .btn:active { transform: scale(.98); }
-  .btn-block { width: 100%; margin-top: 12px; padding: 12px; }
+  .btn-block { width: 100%; margin-top: 8px; padding: 9px; }
 
   /* Quick chips */
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 7px; }
   .chip {
     background: var(--surface-2); color: var(--muted); border: 1px solid var(--border);
-    border-radius: 999px; padding: 5px 12px; font: inherit; font-size: .78rem;
-    cursor: pointer; transition: .15s;
+    border-radius: 8px; padding: 4px 0; font: inherit; font-size: .72rem;
+    cursor: pointer; text-align: center;
   }
   .chip:hover { color: var(--accent-text); background: var(--accent-soft); border-color: transparent; }
 
-  /* Stepper for N weeks */
+  /* Stepper */
   .stepper {
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 4px;
     background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 11px; padding: 3px;
+    border-radius: 9px; padding: 2px; flex-shrink: 0;
   }
   .step-btn {
-    width: 30px; height: 30px; border-radius: 8px; border: 0;
+    width: 24px; height: 24px; border-radius: 6px; border: 0;
     background: var(--surface); color: var(--text); font: inherit;
-    font-weight: 700; cursor: pointer;
+    font-weight: 700; cursor: pointer; line-height: 1;
   }
-  .step-btn:hover { background: var(--accent-soft); color: var(--accent-text); }
-  .step-val { min-width: 68px; text-align: center; font-size: .85rem; font-weight: 600; }
+  .step-val { min-width: 56px; text-align: center; font-size: .76rem; font-weight: 600; }
 
-  .wk-list { display: grid; gap: 8px; max-height: 250px; overflow: auto; padding-right: 2px; }
-  .wk-row { display: flex; align-items: center; gap: 10px; }
-  .wk-tag {
-    width: 96px; flex-shrink: 0; font-size: .84rem; color: var(--muted);
-    font-weight: 500;
+  .wk-list {
+    display: grid; gap: 6px;
+    max-height: 118px; overflow-y: auto;
   }
+  .wk-row {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .wk-tag { font-size: .78rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
 
-  /* Toast */
-  .toast {
-    min-height: 20px; font-size: .82rem; margin-top: 8px;
-    color: var(--accent-text); font-weight: 500;
-  }
+  .toast { font-size: .75rem; text-align: center; min-height: 16px; color: var(--accent-text); font-weight: 500; }
   .toast.err { color: var(--danger); }
 
-  footer { text-align: center; font-size: .78rem; color: var(--muted); margin-top: 18px; }
+  footer {
+    margin-top: auto; text-align: center; font-size: .7rem; color: var(--muted);
+  }
   footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
-  footer a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-<main class="wrap">
+<main class="app">
 
   <!-- Header -->
   <header>
@@ -200,85 +208,85 @@
       <div class="logo" aria-hidden="true">🐷</div>
       <div>
         <h1>ระบบออมเงิน</h1>
-        <p class="sub">ต่อยอดจากโค้ดภาษา C · ยอดรวม / ค่าเฉลี่ย / ค่าสูงสุด</p>
+        <p class="sub">ต่อยอดโค้ด C · รวม / เฉลี่ย / สูงสุด</p>
       </div>
     </div>
     <button id="resetBtn" class="ghost-btn" onclick="resetAll()">เริ่มใหม่</button>
   </header>
 
-  <!-- Hero: ยอดสะสม + ความคืบหน้าเป้าหมาย -->
-  <section class="hero" aria-label="ภาพรวมการออม">
+  <!-- 3. สรุปผลการออม + ความคืบหน้าเป้าหมาย (รวมในการ์ดเดียว) -->
+  <section class="hero" aria-label="สรุปผลการออม">
     <div class="hero-top">
       <div>
         <div class="hero-label">ยอดออมสะสมทั้งหมด</div>
         <div class="hero-total" id="heroTotal">0.00 <small>บาท</small></div>
       </div>
-      <span class="pill" id="heroWeeks">ออมแล้ว 0 สัปดาห์</span>
+      <span class="pill" id="heroWeeks">0 สัปดาห์</span>
     </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-k">ยอดรวม</div>
+        <div class="stat-v" id="stTotal">0.00</div>
+        <div class="stat-s" id="stTotalSub">บาท</div>
+      </div>
+      <div class="stat">
+        <div class="stat-k">เฉลี่ย/สัปดาห์</div>
+        <div class="stat-v" id="stAvg">0.00</div>
+        <div class="stat-s">บาท</div>
+      </div>
+      <div class="stat">
+        <div class="stat-k">ออมสูงสุด</div>
+        <div class="stat-v" id="stHigh">0.00</div>
+        <div class="stat-s" id="stHighSub">บาท</div>
+      </div>
+    </div>
+
     <div class="progress-wrap" id="goalBox"></div>
   </section>
 
-  <!-- เมนู 3: สรุปผล 3 ค่าจากโค้ดครู -->
-  <section class="stats" aria-label="สรุปผลการออม">
-    <div class="stat">
-      <div class="stat-k">ยอดออมรวม (Total)</div>
-      <div class="stat-v" id="stTotal">0.00 ฿</div>
-      <div class="stat-s" id="stTotalSub">ยังไม่มีรายการ</div>
-    </div>
-    <div class="stat avg">
-      <div class="stat-k">เฉลี่ย/สัปดาห์ (Average)</div>
-      <div class="stat-v" id="stAvg">0.00 ฿</div>
-      <div class="stat-s">ยอดรวม ÷ จำนวนสัปดาห์</div>
-    </div>
-    <div class="stat hi">
-      <div class="stat-k">ออมมากที่สุด (Highest)</div>
-      <div class="stat-v" id="stHigh">0.00 ฿</div>
-      <div class="stat-s" id="stHighSub">-</div>
-    </div>
-  </section>
-
-  <!-- เมนู 1: ตั้งเป้าหมายการออม -->
+  <!-- 1. ตั้งเป้าหมายการออม -->
   <section class="card">
     <div class="card-head">
       <h2 class="step"><span class="step-num">1</span> ตั้งเป้าหมายการออม</h2>
     </div>
     <div class="row">
       <div class="input-wrap">
-        <input id="goalInput" type="number" min="1" class="inp" placeholder="กรอกจำนวนเงิน เช่น 5000">
+        <input id="goalInput" type="number" min="1" class="inp" placeholder="เช่น 5000">
         <span class="unit">บาท</span>
       </div>
-      <button id="saveGoalBtn" class="btn" onclick="setGoal()">บันทึกเป้าหมาย</button>
+      <button id="saveGoalBtn" class="btn" onclick="setGoal()">ตั้งเป้า</button>
     </div>
-    <div class="chips" aria-label="เลือกเป้าหมายด่วน">
-      <button class="chip" onclick="quickGoal(1000)">1,000 บาท</button>
-      <button class="chip" onclick="quickGoal(3000)">3,000 บาท</button>
-      <button class="chip" onclick="quickGoal(5000)">5,000 บาท</button>
-      <button class="chip" onclick="quickGoal(10000)">10,000 บาท</button>
+    <div class="chips">
+      <button class="chip" onclick="quickGoal(1000)">1,000</button>
+      <button class="chip" onclick="quickGoal(3000)">3,000</button>
+      <button class="chip" onclick="quickGoal(5000)">5,000</button>
+      <button class="chip" onclick="quickGoal(10000)">10,000</button>
     </div>
   </section>
 
-  <!-- เมนู 2: บันทึกเงินออม (รับ N สัปดาห์) -->
+  <!-- 2. บันทึกเงินออม -->
   <section class="card">
     <div class="card-head">
       <h2 class="step"><span class="step-num">2</span> บันทึกเงินออม</h2>
-      <div class="stepper" aria-label="จำนวนสัปดาห์">
-        <button class="step-btn" onclick="changeN(-1)" aria-label="ลดจำนวนสัปดาห์">−</button>
+      <div class="stepper">
+        <button class="step-btn" onclick="changeN(-1)" aria-label="ลด">−</button>
         <span class="step-val" id="nLabel">1 สัปดาห์</span>
-        <button class="step-btn" onclick="changeN(1)" aria-label="เพิ่มจำนวนสัปดาห์">+</button>
+        <button class="step-btn" onclick="changeN(1)" aria-label="เพิ่ม">+</button>
       </div>
     </div>
     <div id="weekInputs" class="wk-list"></div>
     <button id="addSavingsBtn" class="btn btn-block" onclick="addSavings()">+ บันทึกเงินออม</button>
-    <div id="msg" class="toast" role="status"></div>
   </section>
 
+  <div id="msg" class="toast" role="status"></div>
+
   <footer>
-    ทำงานเหมือนโค้ดใน Dev-C++ ทุกขั้นตอน · ดูไฟล์โค้ด <a href="savings_tracker.c">savings_tracker.c</a>
+    โค้ด Dev-C++: <a href="savings_tracker.c">savings_tracker.c</a>
   </footer>
 </main>
 
 <script>
-/* ตัวแปรเดียวกับในโค้ด C */
 let goal = 0, weekCount = 0, total = 0, highest = 0, hiWeek = 0, N = 1;
 const KEY = "savings-simple-v1";
 const fmt = n => n.toLocaleString("th-TH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -291,19 +299,17 @@ function load(){
   }catch(e){}
 }
 
-/* เมนู 1: ตั้งเป้าหมาย */
 function setGoal(){
   const v = parseFloat(document.getElementById("goalInput").value);
   if(!(v >= 1)) return flash("กรุณากรอกจำนวนเงินเป้าหมายมากกว่า 0 บาท", true);
   goal = v; save(); render();
-  flash(`ตั้งเป้าหมาย ${fmt(goal)} บาท เรียบร้อย`);
+  flash(`ตั้งเป้าหมาย ${fmt(goal)} บาท เรียบร้อย ✓`);
 }
 function quickGoal(v){
   document.getElementById("goalInput").value = v;
   setGoal();
 }
 
-/* เมนู 2: รับค่า N รอบ -> total += amount, if (amount > highest) */
 function changeN(delta){
   N = Math.min(20, Math.max(1, N + delta));
   document.getElementById("nLabel").textContent = `${N} สัปดาห์`;
@@ -355,21 +361,19 @@ function flash(t, err){
   m.textContent = t;
   m.className = "toast" + (err ? " err" : "");
   clearTimeout(flash._t);
-  flash._t = setTimeout(() => m.textContent = "", 3200);
+  flash._t = setTimeout(() => m.textContent = "", 3000);
 }
 
-/* เมนู 3: สรุปผล */
 function render(){
   document.getElementById("goalInput").value = goal || "";
   document.getElementById("heroTotal").innerHTML = `${fmt(total)} <small>บาท</small>`;
-  document.getElementById("heroWeeks").textContent = `ออมแล้ว ${weekCount} สัปดาห์`;
+  document.getElementById("heroWeeks").textContent = `${weekCount} สัปดาห์`;
 
   const average = weekCount ? total / weekCount : 0;
-  document.getElementById("stTotal").textContent = `${fmt(total)} บาท`;
-  document.getElementById("stTotalSub").textContent = weekCount ? `รวม ${weekCount} สัปดาห์` : "ยังไม่มีรายการ";
-  document.getElementById("stAvg").textContent = `${fmt(average)} บาท`;
-  document.getElementById("stHigh").textContent = `${fmt(highest)} บาท`;
-  document.getElementById("stHighSub").textContent = hiWeek ? `สัปดาห์ที่ ${hiWeek}` : "ยังไม่มีรายการ";
+  document.getElementById("stTotal").textContent = fmt(total);
+  document.getElementById("stAvg").textContent = fmt(average);
+  document.getElementById("stHigh").textContent = fmt(highest);
+  document.getElementById("stHighSub").textContent = hiWeek ? `สัปดาห์ที่ ${hiWeek}` : "บาท";
 
   const box = document.getElementById("goalBox");
   if(goal > 0){
@@ -377,12 +381,12 @@ function render(){
     const percent = Math.min(100, total / goal * 100);
     let note;
     if(remaining <= 0){
-      note = "🎉 ยินดีด้วย! คุณออมเงินครบตามเป้าหมายแล้ว";
+      note = "🎉 ยินดีด้วย! ออมเงินครบตามเป้าหมายแล้ว";
     } else if(average > 0){
       const weeksLeft = Math.ceil(remaining / average);
-      note = `ยังขาดอีก ${fmt(remaining)} บาท · คาดว่าจะครบในอีก ${weeksLeft} สัปดาห์`;
+      note = `ขาดอีก ${fmt(remaining)} บาท · คาดว่าครบใน ${weeksLeft} สัปดาห์`;
     } else {
-      note = `ยังขาดอีก ${fmt(remaining)} บาท · เริ่มบันทึกเงินออมด้านล่างได้เลย`;
+      note = `ขาดอีก ${fmt(remaining)} บาท`;
     }
     box.innerHTML = `
       <div class="progress-meta">
@@ -392,7 +396,7 @@ function render(){
       <div class="bar"><div style="width:${percent}%"></div></div>
       <p class="hero-note">${note}</p>`;
   } else {
-    box.innerHTML = `<p class="hero-note">💡 ตั้งเป้าหมายในข้อ 1 เพื่อดูแถบความคืบหน้าและคำนวณว่าอีกกี่สัปดาห์จะครบ</p>`;
+    box.innerHTML = `<p class="hero-note">💡 ตั้งเป้าหมายในข้อ 1 เพื่อดูความคืบหน้า</p>`;
   }
   buildInputs();
 }
