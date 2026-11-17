@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ระบบคำนวณค่าไฟบ้าน · Electricity Tracker</title>
+<meta name="description" content="ระบบคำนวณค่าไฟบ้าน ต่อยอดจากโค้ดภาษา C คำนวณหน่วยไฟรวม ค่าเฉลี่ย และเดือนที่ใช้สูงสุด">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #f1efe9;
+    --border: #e5e0d5;
+    --text: #1c1917;
+    --muted: #6b635b;
+    --accent: #d97706;
+    --accent-hover: #b45309;
+    --accent-soft: #fef3c7;
+    --accent-text: #92400e;
+    --danger: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12100e;
+      --surface: #1c1916;
+      --surface-2: #26221d;
+      --border: #363028;
+      --text: #fef3c7;
+      --muted: #a89f91;
+      --accent: #f59e0b;
+      --accent-hover: #fbbf24;
+      --accent-soft: #362812;
+      --accent-text: #fcd34d;
+      --danger: #f87171;
+    }
+  }
+  * { box-sizing: border-box; min-width: 0; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: "Prompt", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .app {
+    max-width: 440px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .logo {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--accent-soft); display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+  }
+  h1 { font-size: 1.05rem; font-weight: 700; margin: 0; line-height: 1.2; }
+  .sub { font-size: .7rem; color: var(--muted); margin: 0; }
+  .ghost-btn {
+    background: var(--surface); color: var(--muted); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 8px; font: inherit; font-size: .74rem; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .ghost-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+    color: #fffbeb; border-radius: 16px; padding: 14px;
+    box-shadow: 0 8px 20px rgba(217, 119, 6, .22);
+  }
+  .hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .hero-label { font-size: .72rem; opacity: .88; }
+  .hero-total {
+    font-size: 1.55rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    line-height: 1.15; word-break: break-word;
+  }
+  .hero-total small { font-size: .85rem; font-weight: 500; opacity: .88; }
+  .pill {
+    background: rgba(255,255,255,.18); padding: 3px 9px; border-radius: 999px;
+    font-size: .72rem; white-space: nowrap; flex-shrink: 0;
+  }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-top: 10px;
+  }
+  .stat {
+    background: rgba(0, 0, 0, .2);
+    border-radius: 10px; padding: 7px 8px; text-align: center;
+  }
+  .stat-k { font-size: .66rem; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-v { font-size: .88rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-s { font-size: .64rem; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .status-badge {
+    margin-top: 10px; padding: 7px 10px; border-radius: 10px;
+    background: rgba(0, 0, 0, .22); font-size: .74rem; line-height: 1.35;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 12px;
+  }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .step {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 600; font-size: .86rem; margin: 0;
+  }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent-text);
+    display: inline-grid; place-items: center; font-size: .72rem; font-weight: 700; flex-shrink: 0;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .input-wrap { position: relative; width: 100%; }
+  .inp {
+    width: 100%; background: var(--surface-2); color: var(--text);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 8px 46px 8px 10px; font: inherit; font-size: .88rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .inp:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+  .unit {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: .72rem; color: var(--muted); pointer-events: none;
+  }
+  .btn {
+    background: var(--accent); color: #ffffff; border: 0;
+    border-radius: 10px; padding: 8px 13px; font: inherit;
+    font-size: .84rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn-block { width: 100%; margin-top: 8px; padding: 9px; }
+
+  .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 7px; }
+  .chip {
+    background: var(--surface-2); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 0; font: inherit; font-size: .72rem;
+    cursor: pointer; text-align: center;
+  }
+  .chip:hover { color: var(--accent-text); background: var(--accent-soft); border-color: transparent; }
+
+  .stepper {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 9px; padding: 2px; flex-shrink: 0;
+  }
+  .step-btn {
+    width: 24px; height: 24px; border-radius: 6px; border: 0;
+    background: var(--surface); color: var(--text); font: inherit;
+    font-weight: 700; cursor: pointer; line-height: 1;
+  }
+  .step-val { min-width: 54px; text-align: center; font-size: .76rem; font-weight: 600; }
+
+  .wk-list {
+    display: grid; gap: 6px;
+    max-height: 118px; overflow-y: auto;
+  }
+  .wk-row {
+    display: grid;
+    grid-template-columns: 74px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .wk-tag { font-size: .78rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+  .toast { font-size: .75rem; text-align: center; min-height: 16px; color: var(--accent-text); font-weight: 500; }
+  .toast.err { color: var(--danger); }
+
+  footer {
+    margin-top: auto; text-align: center; font-size: .7rem; color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+<main class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true">⚡</div>
+      <div>
+        <h1>ระบบคำนวณค่าไฟบ้าน</h1>
+        <p class="sub">ต่อยอดโค้ด C · รวม / เฉลี่ย / สูงสุด</p>
+      </div>
+    </div>
+    <button id="resetBtn" class="ghost-btn" onclick="resetAll()">เริ่มใหม่</button>
+  </header>
+
+  <!-- 3. สรุปผลการใช้ไฟ + ประเมินสถานะ -->
+  <section class="hero" aria-label="สรุปผลค่าไฟ">
+    <div class="hero-top">
+      <div>
+        <div class="hero-label">ค่าไฟสะสมทั้งหมด</div>
+        <div class="hero-total" id="heroTotal">0.00 <small>บาท</small></div>
+      </div>
+      <span class="pill" id="heroMonths">0 เดือน</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-k">หน่วยรวม</div>
+        <div class="stat-v" id="stTotal">0.00</div>
+        <div class="stat-s" id="stTotalSub">0.00 บาท</div>
+      </div>
+      <div class="stat">
+        <div class="stat-k">เฉลี่ย/เดือน</div>
+        <div class="stat-v" id="stAvg">0.00</div>
+        <div class="stat-s" id="stAvgSub">0.00 บาท</div>
+      </div>
+      <div class="stat">
+        <div class="stat-k">เดือนสูงสุด</div>
+        <div class="stat-v" id="stHigh">0.00</div>
+        <div class="stat-s" id="stHighSub">หน่วย</div>
+      </div>
+    </div>
+
+    <div class="status-badge" id="statusBox"></div>
+  </section>
+
+  <!-- 1. ตั้งราคาค่าไฟต่อหน่วย -->
+  <section class="card">
+    <div class="card-head">
+      <h2 class="step"><span class="step-num">1</span> ตั้งราคาค่าไฟต่อหน่วย</h2>
+    </div>
+    <div class="row">
+      <div class="input-wrap">
+        <input id="rateInput" type="number" min="0.1" step="0.01" class="inp" placeholder="เช่น 4.50">
+        <span class="unit">บาท/หน่วย</span>
+      </div>
+      <button id="saveRateBtn" class="btn" onclick="setRate()">ตั้งราคา</button>
+    </div>
+    <div class="chips">
+      <button class="chip" onclick="quickRate(4.00)">4.00 ฿</button>
+      <button class="chip" onclick="quickRate(4.50)">4.50 ฿</button>
+      <button class="chip" onclick="quickRate(5.00)">5.00 ฿</button>
+      <button class="chip" onclick="quickRate(7.00)">หอพัก 7฿</button>
+    </div>
+  </section>
+
+  <!-- 2. บันทึกหน่วยไฟที่ใช้ -->
+  <section class="card">
+    <div class="card-head">
+      <h2 class="step"><span class="step-num">2</span> บันทึกหน่วยไฟที่ใช้</h2>
+      <div class="stepper">
+        <button class="step-btn" onclick="changeN(-1)" aria-label="ลด">−</button>
+        <span class="step-val" id="nLabel">1 เดือน</span>
+        <button class="step-btn" onclick="changeN(1)" aria-label="เพิ่ม">+</button>
+      </div>
+    </div>
+    <div id="monthInputs" class="wk-list"></div>
+    <button id="addUnitsBtn" class="btn btn-block" onclick="addUnits()">+ บันทึกหน่วยไฟ</button>
+  </section>
+
+  <div id="msg" class="toast" role="status"></div>
+
+  <footer>
+    โค้ด Dev-C++: <a href="electricity_tracker.c">electricity_tracker.c</a> · <a href="./">กลับหน้าระบบออมเงิน</a>
+  </footer>
+</main>
+
+<script>
+/* ตัวแปรเดียวกับในโค้ด C */
+let rate = 4.50, monthCount = 0, totalUnit = 0, highestUnit = 0, hiMonth = 0, N = 1;
+const KEY = "electricity-simple-v1";
+const fmt = n => n.toLocaleString("th-TH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({rate, monthCount, totalUnit, highestUnit, hiMonth})); }catch(e){} }
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if(d){ ({rate=4.50, monthCount=0, totalUnit=0, highestUnit=0, hiMonth=0} = d); }
+  }catch(e){}
+}
+
+function setRate(){
+  const v = parseFloat(document.getElementById("rateInput").value);
+  if(!(v > 0)) return flash("กรุณากรอกราคาต่อหน่วยมากกว่า 0", true);
+  rate = v; save(); render();
+  flash(`ตั้งราคา ${fmt(rate)} บาท/หน่วย เรียบร้อย ✓`);
+}
+function quickRate(v){
+  document.getElementById("rateInput").value = v.toFixed(2);
+  setRate();
+}
+
+function changeN(delta){
+  N = Math.min(12, Math.max(1, N + delta));
+  document.getElementById("nLabel").textContent = `${N} เดือน`;
+  buildInputs();
+}
+function buildInputs(){
+  let html = "";
+  for(let i = 1; i <= N; i++){
+    html += `<div class="wk-row">
+      <span class="wk-tag">เดือนที่ ${monthCount + i}</span>
+      <div class="input-wrap">
+        <input type="number" min="0" class="inp wk" placeholder="0.00" onkeydown="if(event.key==='Enter')addUnits()">
+        <span class="unit">หน่วย</span>
+      </div>
+    </div>`;
+  }
+  document.getElementById("monthInputs").innerHTML = html;
+}
+function addUnits(){
+  const inputs = [...document.querySelectorAll(".wk")];
+  for(const el of inputs){
+    if(el.value === "" || !(parseFloat(el.value) >= 0)){
+      el.focus();
+      return flash("กรุณากรอกหน่วยไฟให้ครบทุกช่อง", true);
+    }
+  }
+  for(const el of inputs){
+    const unit = parseFloat(el.value);
+    monthCount++;
+    totalUnit += unit;
+    if(unit > highestUnit){ highestUnit = unit; hiMonth = monthCount; }
+  }
+  save();
+  const added = inputs.length;
+  N = 1;
+  document.getElementById("nLabel").textContent = "1 เดือน";
+  render();
+  flash(`บันทึกเพิ่ม ${added} เดือนแล้ว ✓`);
+}
+
+function resetAll(){
+  if(!confirm("ต้องการเริ่มใหม่และล้างข้อมูลทั้งหมดใช่ไหม?")) return;
+  rate = 4.50; monthCount = 0; totalUnit = 0; highestUnit = 0; hiMonth = 0; N = 1;
+  save(); render();
+  flash("ล้างข้อมูลเรียบร้อย");
+}
+function flash(t, err){
+  const m = document.getElementById("msg");
+  m.textContent = t;
+  m.className = "toast" + (err ? " err" : "");
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => m.textContent = "", 3000);
+}
+
+function render(){
+  document.getElementById("rateInput").value = rate.toFixed(2);
+  const avgUnit = monthCount ? totalUnit / monthCount : 0;
+  const totalCost = totalUnit * rate;
+  const avgCost = avgUnit * rate;
+
+  document.getElementById("heroTotal").innerHTML = `${fmt(totalCost)} <small>บาท</small>`;
+  document.getElementById("heroMonths").textContent = `${monthCount} เดือน`;
+
+  document.getElementById("stTotal").textContent = `${fmt(totalUnit)}`;
+  document.getElementById("stTotalSub").textContent = `${fmt(totalCost)} ฿`;
+  document.getElementById("stAvg").textContent = `${fmt(avgUnit)}`;
+  document.getElementById("stAvgSub").textContent = `${fmt(avgCost)} ฿`;
+  document.getElementById("stHigh").textContent = `${fmt(highestUnit)}`;
+  document.getElementById("stHighSub").textContent = hiMonth ? `เดือนที่ ${hiMonth}` : "หน่วย";
+
+  const statusBox = document.getElementById("statusBox");
+  let statusText;
+  if(monthCount === 0){
+    statusText = "💡 กรอกหน่วยไฟด้านล่างเพื่อคำนวณค่าไฟและประเมินการใช้ไฟ";
+  } else if(avgUnit <= 150){
+    statusText = "🌱 สถานะ: ประหยัดไฟดีมาก! (เฉลี่ยไม่เกิน 150 หน่วย)";
+  } else if(avgUnit <= 300){
+    statusText = "✅ สถานะ: ใช้ไฟระดับปกติ (151–300 หน่วย/เดือน)";
+  } else {
+    statusText = "⚠️ สถานะ: ใช้ไฟสูง! ควรลดการเปิดแอร์หรือเครื่องใช้ไฟฟ้า";
+  }
+  statusBox.innerHTML = `<span>${statusText}</span><span>${fmt(rate)} ฿/หน่วย</span>`;
+  buildInputs();
+}
+
+load();
+render();
+</script>
+</body>
+</html>
