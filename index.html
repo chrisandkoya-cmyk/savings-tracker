@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ระบบออมเงิน</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js" onerror=""></script>
+<style>
+  :root{
+    --background:#0f172a;--card:#1e293b;--border:#334155;
+    --foreground:#f8fafc;--muted-foreground:#94a3b8;
+    --primary:#38bdf8;--primary-foreground:#0f172a;
+    --secondary:#334155;--secondary-foreground:#f1f5f9;
+    --success:#22c55e;--warning:#f59e0b;--error:#ef4444;
+    --chart-1:#38bdf8;--chart-2:#a855f7;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --background:#f8fafc;--card:#ffffff;--border:#e2e8f0;
+      --foreground:#0f172a;--muted-foreground:#64748b;
+      --primary:#0284c7;--primary-foreground:#ffffff;
+      --secondary:#f1f5f9;--secondary-foreground:#1e293b;
+      --success:#16a34a;--warning:#d97706;--error:#dc2626;
+      --chart-1:#0284c7;--chart-2:#9333ea;
+    }
+  }
+  body{background:var(--background);color:var(--foreground);font-family:system-ui,-apple-system,sans-serif;margin:0}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+  .inp{background:var(--background);border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:100%;color:var(--foreground);box-sizing:border-box}
+  .inp:focus{outline:2px solid var(--primary);outline-offset:-1px}
+  .btn{background:var(--primary);color:var(--primary-foreground);border-radius:8px;padding:8px 14px;font-weight:600;border:0;cursor:pointer}
+  .btn2{background:var(--secondary);color:var(--secondary-foreground);border-radius:8px;padding:6px 12px;font-size:12px;border:0;cursor:pointer}
+  .btn:hover,.btn2:hover{opacity:.88}
+  .muted{color:var(--muted-foreground)}
+</style>
+</head>
+<body class="antialiased">
+<div class="max-w-5xl mx-auto p-4 md:p-6 space-y-4">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">🐷 ระบบออมเงิน</h1>
+      <p class="muted text-sm">ต่อยอดจากโค้ดหายอดรวม / ค่าเฉลี่ย / ค่าสูงสุด</p>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn2" onclick="undoLast()">↶ ลบสัปดาห์ล่าสุด</button>
+      <button class="btn2" onclick="resetAll()">🗑 ล้างข้อมูล</button>
+    </div>
+  </div>
+
+  <!-- Goal + progress -->
+  <div class="card p-4 space-y-3">
+    <div class="flex flex-wrap items-end gap-3">
+      <label class="flex-1 min-w-[160px] text-xs muted">ชื่อเป้าหมาย
+        <input id="goalName" class="inp mt-1 text-sm" placeholder="เช่น โทรศัพท์ใหม่">
+      </label>
+      <label class="w-40 text-xs muted">จำนวนเงินเป้าหมาย (บาท)
+        <input id="goalAmount" type="number" min="1" class="inp mt-1 text-sm" placeholder="5000">
+      </label>
+      <button class="btn text-sm" onclick="setGoal()">ตั้งเป้าหมาย</button>
+    </div>
+    <div id="goalBox"></div>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-4">
+    <!-- Add savings -->
+    <div class="card p-4 space-y-3">
+      <h2 class="font-semibold">➕ บันทึกเงินออม</h2>
+      <label class="text-xs muted block">จำนวนสัปดาห์ (N)
+        <input id="nWeeks" type="number" min="1" max="52" value="1" class="inp mt-1 text-sm" oninput="buildInputs()">
+      </label>
+      <div id="weekInputs" class="space-y-2 max-h-64 overflow-auto pr-1"></div>
+      <button class="btn w-full text-sm" onclick="addSavings()">บันทึก</button>
+      <p id="msg" class="text-xs"></p>
+    </div>
+
+    <!-- Summary -->
+    <div class="card p-4 md:col-span-2">
+      <h2 class="font-semibold mb-3">📊 สรุปผลการออม</h2>
+      <div id="summary" class="grid grid-cols-2 gap-3"></div>
+    </div>
+  </div>
+
+  <!-- Chart + history -->
+  <div class="card p-4 space-y-3">
+    <h2 class="font-semibold">📈 ประวัติการออม</h2>
+    <div id="chart"></div>
+    <div class="overflow-auto max-h-72">
+      <table class="w-full text-sm">
+        <thead class="muted text-xs text-left" style="border-bottom:1px solid var(--border)">
+          <tr><th class="py-2">สัปดาห์</th><th class="text-right">ออมได้</th><th class="text-right">ยอดสะสม</th><th class="text-right">หมายเหตุ</th></tr>
+        </thead>
+        <tbody id="history"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted text-xs text-center">ข้อมูลบันทึกในเบราว์เซอร์อัตโนมัติ · เวอร์ชัน Dev-C++ ดูไฟล์ <a href="savings_tracker.c" class="underline">savings_tracker.c</a></p>
+</div>
+
+<script>
+let goalName = "เป้าหมายของฉัน", goalAmount = 0, saving = [];
+const KEY = "savings-tracker-v1";
+const fmt = n => n.toLocaleString("th-TH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+function saveData(){ try{ localStorage.setItem(KEY, JSON.stringify({goalName, goalAmount, saving})); }catch(e){} }
+function loadData(){
+  try{
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if(d){ goalName = d.goalName; goalAmount = d.goalAmount; saving = d.saving || []; }
+  }catch(e){}
+}
+
+function setGoal(){
+  const amt = parseFloat(document.getElementById("goalAmount").value);
+  if(!(amt >= 1)) return flash("กรุณากรอกจำนวนเงินเป้าหมายให้ถูกต้อง", true);
+  goalName = document.getElementById("goalName").value.trim() || "เป้าหมายของฉัน";
+  goalAmount = amt;
+  saveData(); render();
+}
+
+function buildInputs(){
+  let N = Math.min(52, Math.max(1, parseInt(document.getElementById("nWeeks").value) || 1));
+  let html = "";
+  for(let i = 1; i <= N; i++){
+    html += `<label class="flex items-center gap-2 text-xs muted">
+      <span class="w-20 shrink-0">สัปดาห์ ${saving.length + i}</span>
+      <input type="number" min="0" class="inp text-sm wk" placeholder="0.00"></label>`;
+  }
+  document.getElementById("weekInputs").innerHTML = html;
+}
+function addSavings(){
+  const inputs = [...document.querySelectorAll(".wk")];
+  const vals = [];
+  for(const el of inputs){
+    const v = el.value === "" ? NaN : parseFloat(el.value);
+    if(!(v >= 0)) { el.focus(); return flash("กรุณากรอกจำนวนเงิน (ตั้งแต่ 0 ขึ้นไป) ให้ครบทุกสัปดาห์", true); }
+    vals.push(v);
+  }
+  saving.push(...vals);
+  saveData(); flash(`บันทึก ${vals.length} สัปดาห์เรียบร้อย ✓`);
+  document.getElementById("nWeeks").value = 1;
+  render();
+}
+function undoLast(){ if(!saving.length) return; saving.pop(); saveData(); render(); }
+function resetAll(){
+  if(!confirm("ต้องการลบข้อมูลทั้งหมดใช่ไหม?")) return;
+  goalName = "เป้าหมายของฉัน"; goalAmount = 0; saving = []; saveData(); render();
+}
+function flash(t, err){
+  const m = document.getElementById("msg");
+  m.textContent = t; m.style.color = err ? "var(--error)" : "var(--success)";
+  setTimeout(() => m.textContent = "", 3000);
+}
+
+function calc(){
+  let total = 0, highest = 0, hiW = 1, lowest = saving[0] ?? 0, loW = 1;
+  for(let i = 0; i < saving.length; i++){
+    total += saving[i];
+    if(saving[i] > highest){ highest = saving[i]; hiW = i + 1; }
+    if(saving[i] < lowest){ lowest = saving[i]; loW = i + 1; }
+  }
+  const average = saving.length ? total / saving.length : 0;
+  return {total, average, highest, hiW, lowest, loW};
+}
+
+function stat(label, value, sub, color){
+  return `<div class="rounded-xl p-3" style="border:1px solid var(--border)">
+    <div class="text-xs muted">${label}</div>
+    <div class="text-xl font-bold tabular-nums" style="color:${color||'var(--foreground)'}">${value}</div>
+    <div class="text-xs muted">${sub||""}</div></div>`;
+}
+
+function render(){
+  const s = calc(), n = saving.length;
+  document.getElementById("goalName").value = goalAmount ? goalName : "";
+  document.getElementById("goalAmount").value = goalAmount || "";
+
+  document.getElementById("summary").innerHTML = n === 0
+    ? `<p class="muted text-sm col-span-2">ยังไม่มีข้อมูล เริ่มบันทึกเงินออมทางซ้ายได้เลย</p>`
+    : stat("ยอดออมรวม", fmt(s.total) + " บาท", `${n} สัปดาห์`, "var(--chart-1)")
+    + stat("เฉลี่ยต่อสัปดาห์", fmt(s.average) + " บาท", "ยอดรวม ÷ จำนวนสัปดาห์", "var(--chart-2)")
+    + stat("ออมมากที่สุด", fmt(s.highest) + " บาท", `สัปดาห์ที่ ${s.hiW}`, "var(--success)")
+    + stat("ออมน้อยที่สุด", fmt(s.lowest) + " บาท", `สัปดาห์ที่ ${s.loW}`, "var(--warning)");
+
+  let g = "";
+  if(goalAmount > 0){
+    const pct = Math.min(100, s.total / goalAmount * 100), remaining = goalAmount - s.total;
+    let note;
+    if(remaining <= 0) note = `<span style="color:var(--success)" class="font-semibold">🎉 ยินดีด้วย! ออมครบเป้าหมายแล้ว</span>`;
+    else if(s.average > 0) note = `เหลืออีก <b>${fmt(remaining)} บาท</b> · ถ้าออมเท่าค่าเฉลี่ย จะถึงเป้าในอีก <b>${Math.ceil(remaining / s.average)} สัปดาห์</b>`;
+    else note = `เหลืออีก <b>${fmt(remaining)} บาท</b> · เริ่มออมเพื่อดูว่าจะถึงเป้าเมื่อไร`;
+    g = `<div class="flex justify-between text-sm mb-1"><span>🎯 <b>${esc(goalName)}</b> · ${fmt(goalAmount)} บาท</span><span class="tabular-nums font-semibold">${pct.toFixed(1)}%</span></div>
+      <div class="h-3 rounded-full overflow-hidden" style="background:var(--secondary)">
+        <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${pct>=100?'var(--success)':'var(--primary)'}"></div></div>
+      <p class="text-xs muted mt-2">${note}</p>`;
+  } else g = `<p class="text-xs muted">💡 ตั้งเป้าหมายเพื่อดูความคืบหน้าและเวลาที่จะออมครบ</p>`;
+  document.getElementById("goalBox").innerHTML = g;
+
+  let run = 0, rows = "";
+  saving.forEach((v, i) => {
+    run += v;
+    const tag = n > 1 && i + 1 === s.hiW ? `<span style="color:var(--success)">สูงสุด</span>`
+              : n > 1 && i + 1 === s.loW ? `<span style="color:var(--warning)">ต่ำสุด</span>` : "";
+    rows = `<tr style="border-bottom:1px solid var(--border)"><td class="py-1.5">${i+1}</td>
+      <td class="text-right tabular-nums">${fmt(v)}</td><td class="text-right tabular-nums">${fmt(run)}</td>
+      <td class="text-right text-xs">${tag}</td></tr>` + rows;
+  });
+  document.getElementById("history").innerHTML = rows || `<tr><td colspan="4" class="py-3 muted text-center text-xs">ยังไม่มีข้อมูล</td></tr>`;
+
+  drawChart(s);
+  buildInputs();
+}
+
+function drawChart(s){
+  const el = document.getElementById("chart");
+  if(!saving.length){ el.innerHTML = ""; return; }
+  const W = 900, H = 200, pad = 28, data = saving.slice(-26), off = saving.length - data.length;
+  const max = Math.max(...data, s.average, 1), bw = (W - pad * 2) / data.length;
+  const y = v => H - pad - (v / max) * (H - pad * 2);
+  let bars = data.map((v, i) => {
+    const h = H - pad - y(v), wk = off + i + 1;
+    const col = wk === s.hiW ? "var(--success)" : "var(--chart-1)";
+    return `<rect x="${pad + i*bw + bw*0.15}" y="${y(v)}" width="${bw*0.7}" height="${Math.max(h,1)}" rx="3" fill="${col}"><title>สัปดาห์ ${wk}: ${fmt(v)} บาท</title></rect>
+      <text x="${pad + i*bw + bw/2}" y="${H - 10}" font-size="11" text-anchor="middle" fill="var(--muted-foreground)">${wk}</text>`;
+  }).join("");
+  const ay = y(s.average);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto">${bars}
+    <line x1="${pad}" x2="${W-pad}" y1="${ay}" y2="${ay}" stroke="var(--chart-2)" stroke-dasharray="6 4" stroke-width="2"/>
+    <text x="${W-pad}" y="${ay-6}" font-size="12" text-anchor="end" fill="var(--chart-2)">เฉลี่ย ${fmt(s.average)} บาท</text></svg>`;
+}
+function esc(t){ return t.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+loadData();
+render();
+</script>
+</body>
+</html>
