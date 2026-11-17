@@ -36,7 +36,7 @@
 </style>
 </head>
 <body class="antialiased">
-<div class="max-w-5xl mx-auto p-4 md:p-6 space-y-4">
+<div class="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
 
   <!-- Header -->
   <div class="flex flex-wrap items-center justify-between gap-3">
@@ -44,196 +44,142 @@
       <h1 class="text-2xl font-bold">🐷 ระบบออมเงิน</h1>
       <p class="muted text-sm">ต่อยอดจากโค้ดหายอดรวม / ค่าเฉลี่ย / ค่าสูงสุด</p>
     </div>
-    <div class="flex gap-2">
-      <button class="btn2" onclick="undoLast()">↶ ลบสัปดาห์ล่าสุด</button>
-      <button class="btn2" onclick="resetAll()">🗑 ล้างข้อมูล</button>
-    </div>
+    <button class="btn2" onclick="resetAll()">🗑 เริ่มใหม่</button>
   </div>
 
-  <!-- Goal + progress -->
+  <!-- 1. ตั้งเป้าหมายการออม -->
   <div class="card p-4 space-y-3">
+    <h2 class="font-semibold">1. ตั้งเป้าหมายการออม</h2>
     <div class="flex flex-wrap items-end gap-3">
-      <label class="flex-1 min-w-[160px] text-xs muted">ชื่อเป้าหมาย
-        <input id="goalName" class="inp mt-1 text-sm" placeholder="เช่น โทรศัพท์ใหม่">
-      </label>
-      <label class="w-40 text-xs muted">จำนวนเงินเป้าหมาย (บาท)
-        <input id="goalAmount" type="number" min="1" class="inp mt-1 text-sm" placeholder="5000">
+      <label class="flex-1 min-w-[160px] text-xs muted">จำนวนเงินเป้าหมาย (บาท)
+        <input id="goalInput" type="number" min="1" class="inp mt-1 text-sm" placeholder="เช่น 5000">
       </label>
       <button class="btn text-sm" onclick="setGoal()">ตั้งเป้าหมาย</button>
     </div>
+  </div>
+
+  <!-- 2. บันทึกเงินออม (ลูป N รอบเหมือนโค้ดครู) -->
+  <div class="card p-4 space-y-3">
+    <h2 class="font-semibold">2. บันทึกเงินออม</h2>
+    <label class="text-xs muted block">กรอกจำนวนสัปดาห์ (N)
+      <input id="nWeeks" type="number" min="1" max="52" value="1" class="inp mt-1 text-sm" oninput="buildInputs()">
+    </label>
+    <div id="weekInputs" class="space-y-2 max-h-60 overflow-auto pr-1"></div>
+    <button class="btn w-full text-sm" onclick="addSavings()">บันทึกเงินออม</button>
+    <p id="msg" class="text-xs"></p>
+  </div>
+
+  <!-- 3. สรุปผลการออม -->
+  <div class="card p-4 space-y-4">
+    <h2 class="font-semibold">3. สรุปผลการออม</h2>
+    <div id="summary" class="grid sm:grid-cols-3 gap-3"></div>
     <div id="goalBox"></div>
   </div>
 
-  <div class="grid md:grid-cols-3 gap-4">
-    <!-- Add savings -->
-    <div class="card p-4 space-y-3">
-      <h2 class="font-semibold">➕ บันทึกเงินออม</h2>
-      <label class="text-xs muted block">จำนวนสัปดาห์ (N)
-        <input id="nWeeks" type="number" min="1" max="52" value="1" class="inp mt-1 text-sm" oninput="buildInputs()">
-      </label>
-      <div id="weekInputs" class="space-y-2 max-h-64 overflow-auto pr-1"></div>
-      <button class="btn w-full text-sm" onclick="addSavings()">บันทึก</button>
-      <p id="msg" class="text-xs"></p>
-    </div>
-
-    <!-- Summary -->
-    <div class="card p-4 md:col-span-2">
-      <h2 class="font-semibold mb-3">📊 สรุปผลการออม</h2>
-      <div id="summary" class="grid grid-cols-2 gap-3"></div>
-    </div>
-  </div>
-
-  <!-- Chart + history -->
-  <div class="card p-4 space-y-3">
-    <h2 class="font-semibold">📈 ประวัติการออม</h2>
-    <div id="chart"></div>
-    <div class="overflow-auto max-h-72">
-      <table class="w-full text-sm">
-        <thead class="muted text-xs text-left" style="border-bottom:1px solid var(--border)">
-          <tr><th class="py-2">สัปดาห์</th><th class="text-right">ออมได้</th><th class="text-right">ยอดสะสม</th><th class="text-right">หมายเหตุ</th></tr>
-        </thead>
-        <tbody id="history"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <p class="muted text-xs text-center">ข้อมูลบันทึกในเบราว์เซอร์อัตโนมัติ · เวอร์ชัน Dev-C++ ดูไฟล์ <a href="savings_tracker.c" class="underline">savings_tracker.c</a></p>
+  <p class="muted text-xs text-center">เวอร์ชัน Dev-C++ ดูไฟล์ <a href="savings_tracker.c" class="underline">savings_tracker.c</a></p>
 </div>
 
 <script>
-let goalName = "เป้าหมายของฉัน", goalAmount = 0, saving = [];
-const KEY = "savings-tracker-v1";
+/* ตัวแปรเดียวกับในโค้ด C */
+let goal = 0, weekCount = 0, total = 0, highest = 0, hiWeek = 0;
+const KEY = "savings-simple-v1";
 const fmt = n => n.toLocaleString("th-TH", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-function saveData(){ try{ localStorage.setItem(KEY, JSON.stringify({goalName, goalAmount, saving})); }catch(e){} }
-function loadData(){
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify({goal, weekCount, total, highest, hiWeek})); }catch(e){} }
+function load(){
   try{
     const d = JSON.parse(localStorage.getItem(KEY));
-    if(d){ goalName = d.goalName; goalAmount = d.goalAmount; saving = d.saving || []; }
+    if(d){ ({goal=0, weekCount=0, total=0, highest=0, hiWeek=0} = d); }
   }catch(e){}
 }
 
+/* เมนู 1: ตั้งเป้าหมาย */
 function setGoal(){
-  const amt = parseFloat(document.getElementById("goalAmount").value);
-  if(!(amt >= 1)) return flash("กรุณากรอกจำนวนเงินเป้าหมายให้ถูกต้อง", true);
-  goalName = document.getElementById("goalName").value.trim() || "เป้าหมายของฉัน";
-  goalAmount = amt;
-  saveData(); render();
+  const v = parseFloat(document.getElementById("goalInput").value);
+  if(!(v >= 1)) return flash("กรุณากรอกจำนวนเงินเป้าหมายให้ถูกต้อง", true);
+  goal = v; save(); render();
+  flash(`ตั้งเป้าหมาย ${fmt(goal)} บาท เรียบร้อย!`);
 }
 
+/* เมนู 2: รับค่า N รอบ -> total += amount, if (amount > highest) */
 function buildInputs(){
   let N = Math.min(52, Math.max(1, parseInt(document.getElementById("nWeeks").value) || 1));
   let html = "";
   for(let i = 1; i <= N; i++){
     html += `<label class="flex items-center gap-2 text-xs muted">
-      <span class="w-20 shrink-0">สัปดาห์ ${saving.length + i}</span>
+      <span class="w-28 shrink-0">เงินออมสัปดาห์ที่ ${weekCount + i}</span>
       <input type="number" min="0" class="inp text-sm wk" placeholder="0.00"></label>`;
   }
   document.getElementById("weekInputs").innerHTML = html;
 }
 function addSavings(){
   const inputs = [...document.querySelectorAll(".wk")];
-  const vals = [];
   for(const el of inputs){
-    const v = el.value === "" ? NaN : parseFloat(el.value);
-    if(!(v >= 0)) { el.focus(); return flash("กรุณากรอกจำนวนเงิน (ตั้งแต่ 0 ขึ้นไป) ให้ครบทุกสัปดาห์", true); }
-    vals.push(v);
+    if(el.value === "" || !(parseFloat(el.value) >= 0)){
+      el.focus(); return flash("กรุณากรอกจำนวนเงินให้ครบทุกสัปดาห์", true);
+    }
   }
-  saving.push(...vals);
-  saveData(); flash(`บันทึก ${vals.length} สัปดาห์เรียบร้อย ✓`);
+  for(const el of inputs){
+    const amount = parseFloat(el.value);
+    weekCount++;
+    total += amount;
+    if(amount > highest){ highest = amount; hiWeek = weekCount; }
+  }
+  save();
   document.getElementById("nWeeks").value = 1;
   render();
+  flash(`บันทึก ${inputs.length} สัปดาห์เรียบร้อย!`);
 }
-function undoLast(){ if(!saving.length) return; saving.pop(); saveData(); render(); }
+
 function resetAll(){
-  if(!confirm("ต้องการลบข้อมูลทั้งหมดใช่ไหม?")) return;
-  goalName = "เป้าหมายของฉัน"; goalAmount = 0; saving = []; saveData(); render();
+  if(!confirm("ต้องการเริ่มใหม่และล้างข้อมูลทั้งหมดใช่ไหม?")) return;
+  goal = 0; weekCount = 0; total = 0; highest = 0; hiWeek = 0;
+  save(); render();
 }
 function flash(t, err){
   const m = document.getElementById("msg");
   m.textContent = t; m.style.color = err ? "var(--error)" : "var(--success)";
   setTimeout(() => m.textContent = "", 3000);
 }
-
-function calc(){
-  let total = 0, highest = 0, hiW = 1, lowest = saving[0] ?? 0, loW = 1;
-  for(let i = 0; i < saving.length; i++){
-    total += saving[i];
-    if(saving[i] > highest){ highest = saving[i]; hiW = i + 1; }
-    if(saving[i] < lowest){ lowest = saving[i]; loW = i + 1; }
-  }
-  const average = saving.length ? total / saving.length : 0;
-  return {total, average, highest, hiW, lowest, loW};
-}
-
 function stat(label, value, sub, color){
   return `<div class="rounded-xl p-3" style="border:1px solid var(--border)">
     <div class="text-xs muted">${label}</div>
-    <div class="text-xl font-bold tabular-nums" style="color:${color||'var(--foreground)'}">${value}</div>
-    <div class="text-xs muted">${sub||""}</div></div>`;
+    <div class="text-xl font-bold tabular-nums" style="color:${color}">${value}</div>
+    <div class="text-xs muted">${sub}</div></div>`;
 }
 
+/* เมนู 3: สรุปผล */
 function render(){
-  const s = calc(), n = saving.length;
-  document.getElementById("goalName").value = goalAmount ? goalName : "";
-  document.getElementById("goalAmount").value = goalAmount || "";
-
-  document.getElementById("summary").innerHTML = n === 0
-    ? `<p class="muted text-sm col-span-2">ยังไม่มีข้อมูล เริ่มบันทึกเงินออมทางซ้ายได้เลย</p>`
-    : stat("ยอดออมรวม", fmt(s.total) + " บาท", `${n} สัปดาห์`, "var(--chart-1)")
-    + stat("เฉลี่ยต่อสัปดาห์", fmt(s.average) + " บาท", "ยอดรวม ÷ จำนวนสัปดาห์", "var(--chart-2)")
-    + stat("ออมมากที่สุด", fmt(s.highest) + " บาท", `สัปดาห์ที่ ${s.hiW}`, "var(--success)")
-    + stat("ออมน้อยที่สุด", fmt(s.lowest) + " บาท", `สัปดาห์ที่ ${s.loW}`, "var(--warning)");
+  document.getElementById("goalInput").value = goal || "";
+  if(weekCount === 0){
+    document.getElementById("summary").innerHTML = `<p class="muted text-sm sm:col-span-3">ยังไม่มีข้อมูลการออม</p>`;
+  } else {
+    const average = total / weekCount;
+    document.getElementById("summary").innerHTML =
+      stat("ยอดออมรวม", fmt(total) + " บาท", `ออมแล้ว ${weekCount} สัปดาห์`, "var(--chart-1)") +
+      stat("เฉลี่ยต่อสัปดาห์", fmt(average) + " บาท", "ยอดรวม ÷ จำนวนสัปดาห์", "var(--chart-2)") +
+      stat("ออมมากที่สุด", fmt(highest) + " บาท", `สัปดาห์ที่ ${hiWeek}`, "var(--success)");
+  }
 
   let g = "";
-  if(goalAmount > 0){
-    const pct = Math.min(100, s.total / goalAmount * 100), remaining = goalAmount - s.total;
+  if(goal > 0){
+    const remaining = goal - total, percent = Math.min(100, total / goal * 100);
+    const average = weekCount ? total / weekCount : 0;
     let note;
-    if(remaining <= 0) note = `<span style="color:var(--success)" class="font-semibold">🎉 ยินดีด้วย! ออมครบเป้าหมายแล้ว</span>`;
-    else if(s.average > 0) note = `เหลืออีก <b>${fmt(remaining)} บาท</b> · ถ้าออมเท่าค่าเฉลี่ย จะถึงเป้าในอีก <b>${Math.ceil(remaining / s.average)} สัปดาห์</b>`;
-    else note = `เหลืออีก <b>${fmt(remaining)} บาท</b> · เริ่มออมเพื่อดูว่าจะถึงเป้าเมื่อไร`;
-    g = `<div class="flex justify-between text-sm mb-1"><span>🎯 <b>${esc(goalName)}</b> · ${fmt(goalAmount)} บาท</span><span class="tabular-nums font-semibold">${pct.toFixed(1)}%</span></div>
+    if(remaining <= 0) note = `<span style="color:var(--success)" class="font-semibold">🎉 ยินดีด้วย! ออมครบเป้าหมายแล้ว!</span>`;
+    else if(average > 0) note = `ยังขาดอีก <b>${fmt(remaining)} บาท</b> · คาดว่าจะครบใน <b>${Math.ceil(remaining / average)} สัปดาห์</b>`;
+    else note = `ยังขาดอีก <b>${fmt(remaining)} บาท</b>`;
+    g = `<div class="pt-3" style="border-top:1px solid var(--border)">
+      <div class="flex justify-between text-sm mb-1"><span>🎯 เป้าหมาย: <b>${fmt(goal)} บาท</b></span><span class="tabular-nums font-semibold">${percent.toFixed(1)}%</span></div>
       <div class="h-3 rounded-full overflow-hidden" style="background:var(--secondary)">
-        <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${pct>=100?'var(--success)':'var(--primary)'}"></div></div>
-      <p class="text-xs muted mt-2">${note}</p>`;
-  } else g = `<p class="text-xs muted">💡 ตั้งเป้าหมายเพื่อดูความคืบหน้าและเวลาที่จะออมครบ</p>`;
+        <div class="h-full rounded-full transition-all" style="width:${percent}%;background:${percent>=100?'var(--success)':'var(--primary)'}"></div></div>
+      <p class="text-xs muted mt-2">${note}</p></div>`;
+  }
   document.getElementById("goalBox").innerHTML = g;
-
-  let run = 0, rows = "";
-  saving.forEach((v, i) => {
-    run += v;
-    const tag = n > 1 && i + 1 === s.hiW ? `<span style="color:var(--success)">สูงสุด</span>`
-              : n > 1 && i + 1 === s.loW ? `<span style="color:var(--warning)">ต่ำสุด</span>` : "";
-    rows = `<tr style="border-bottom:1px solid var(--border)"><td class="py-1.5">${i+1}</td>
-      <td class="text-right tabular-nums">${fmt(v)}</td><td class="text-right tabular-nums">${fmt(run)}</td>
-      <td class="text-right text-xs">${tag}</td></tr>` + rows;
-  });
-  document.getElementById("history").innerHTML = rows || `<tr><td colspan="4" class="py-3 muted text-center text-xs">ยังไม่มีข้อมูล</td></tr>`;
-
-  drawChart(s);
   buildInputs();
 }
 
-function drawChart(s){
-  const el = document.getElementById("chart");
-  if(!saving.length){ el.innerHTML = ""; return; }
-  const W = 900, H = 200, pad = 28, data = saving.slice(-26), off = saving.length - data.length;
-  const max = Math.max(...data, s.average, 1), bw = (W - pad * 2) / data.length;
-  const y = v => H - pad - (v / max) * (H - pad * 2);
-  let bars = data.map((v, i) => {
-    const h = H - pad - y(v), wk = off + i + 1;
-    const col = wk === s.hiW ? "var(--success)" : "var(--chart-1)";
-    return `<rect x="${pad + i*bw + bw*0.15}" y="${y(v)}" width="${bw*0.7}" height="${Math.max(h,1)}" rx="3" fill="${col}"><title>สัปดาห์ ${wk}: ${fmt(v)} บาท</title></rect>
-      <text x="${pad + i*bw + bw/2}" y="${H - 10}" font-size="11" text-anchor="middle" fill="var(--muted-foreground)">${wk}</text>`;
-  }).join("");
-  const ay = y(s.average);
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="w-full h-auto">${bars}
-    <line x1="${pad}" x2="${W-pad}" y1="${ay}" y2="${ay}" stroke="var(--chart-2)" stroke-dasharray="6 4" stroke-width="2"/>
-    <text x="${W-pad}" y="${ay-6}" font-size="12" text-anchor="end" fill="var(--chart-2)">เฉลี่ย ${fmt(s.average)} บาท</text></svg>`;
-}
-function esc(t){ return t.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-
-loadData();
+load();
 render();
 </script>
 </body>
